@@ -5,3 +5,42 @@
 	"exclude_documentation_c2": false,
 	"exclude_agent_icons": false
 }
+
+
+# Basic PTH Detection
+SELECT DATEFORMAT(starttime,'YYYY-MM-dd HH:mm:ss') as "Time",
+    sourceip as "Source IP",
+    destinationip as "Destination IP",
+    username as "Username",
+    LOGSOURCENAME(logsourceid) as "Log Source",
+    UTF8(payload) as "Full Payload"
+FROM events
+WHERE 
+    # Windows Event ID 4624 (Successful Logon) with NTLM
+    (QIDDESCRIPTION(qid) ILIKE '%4624%' 
+    AND UTF8(payload) ILIKE '%logon type 3%'
+    AND UTF8(payload) ILIKE '%NTLM%')
+    
+    # Detect NTLM authentication without Kerberos pre-authentication
+    OR (QIDDESCRIPTION(qid) ILIKE '%4625%' 
+    AND UTF8(payload) ILIKE '%NTLM%'
+    AND UTF8(payload) NOT ILIKE '%Kerberos%')
+    
+    # Suspicious NTLM behaviors
+    OR UTF8(payload) ILIKE '%0xC0000224%'  # NT_STATUS_PASSWORD_MUST_CHANGE
+    OR UTF8(payload) ILIKE '%0xC000015B%'   # The user has not been granted requested logon type
+    
+    # Check for multiple logons from same source to different destinations
+    AND sourceip IN (
+        SELECT sourceip 
+        FROM events 
+        WHERE QIDDESCRIPTION(qid) ILIKE '%4624%'
+        GROUP BY sourceip 
+        HAVING COUNT(DISTINCT destinationip) > 3
+    )
+
+# Time window - last 24 hours
+LAST 24 HOURS
+
+# Order results
+ORDER BY "Time" DESC
