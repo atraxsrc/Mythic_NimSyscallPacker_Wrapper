@@ -6,30 +6,26 @@
 	"exclude_agent_icons": false
 }
 
-$environmentURL = 'https://haveibeenpwned.com/api/v3'
-$service = 'breachedaccount/' # Fixed service name and removed extra variable
+# Simple HIBP checker
+$apiKey = "APIKEY"  # Replace with your actual API key
+$email = Read-Host "Enter email to check"
 
-# Set default credentials for proxy if needed
-(New-Object System.Net.WebClient).Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
-
-$baseHeaders = @{
-    'hibp-api-key' = 'APIKEY'  # Fixed header name
-    'Accept' = 'application/json'
-    'user-agent' = 'powershell'  # Kept simple user-agent
+$headers = @{
+    'hibp-api-key' = $apiKey
+    'user-agent' = 'powershell'
 }
 
-$emailToSearch = Read-Host "Email Address to Search"
-$webRequest = $environmentURL + $service + $emailToSearch
+$url = "https://haveibeenpwned.com/api/v3/breachedaccount/$email"
+
+Write-Host "Checking $email..."
 
 try {
-    $result = Invoke-RestMethod -Uri $webRequest -Method Get -Headers $baseHeaders
-    $result | Format-Table -AutoSize
+    $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Get
+    Write-Host "Found in these breaches:"
+    $response | ForEach-Object { Write-Host "- $($_.Name)" }
 }
 catch {
-    if ($_.Exception.Response.StatusCode.value__ -eq 404) {
-        Write-Host "No breaches found for this email address."
-    }
-    else {
-        Write-Host "Error: $($_.Exception.Message)"
-    }
+    Write-Host "Error checking email: $($_.Exception.Message)"
 }
+
+pause
