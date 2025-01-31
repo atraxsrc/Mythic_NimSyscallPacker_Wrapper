@@ -6,4 +6,23 @@
 	"exclude_agent_icons": false
 }
 
+DeviceNetworkEvents
+| where RemotePort in (21, 22, 23, 25, 53, 80, 443, 445, 3389)
+| where ActionType == "ConnectionSuccess"
+| summarize PortCount=dcount(RemotePort) by DeviceId, InitiatingProcessFileName
+| where PortCount > 3
 
+Check for discovery commands and tools:
+
+CopyDeviceProcessEvents
+| where FileName in~ ("nmap.exe", "psexec.exe", "mimikatz.exe", "powersploit.ps1", "bloodhound.exe")
+    or ProcessCommandLine contains "net use" 
+    or ProcessCommandLine contains "net view"
+
+Monitor for unusual PowerShell activity:
+
+CopyDeviceProcessEvents
+| where FileName =~ "powershell.exe"
+| where ProcessCommandLine contains "download" 
+    or ProcessCommandLine contains "IEX" 
+    or ProcessCommandLine contains "invoke-expression"
