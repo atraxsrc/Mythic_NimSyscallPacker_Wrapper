@@ -6,43 +6,30 @@
 	"exclude_agent_icons": false
 }
 
-DeviceNetworkEvents
-| where RemotePort in (21, 22, 23, 25, 53, 80, 443, 445, 3389)
-| where ActionType == "ConnectionSuccess"
-| summarize PortCount=dcount(RemotePort) by DeviceId, InitiatingProcessFileName
-| where PortCount > 3
+$environmentURL = 'https://haveibeenpwned.com/api/v3'
+$service = 'breachedaccount/' # Fixed service name and removed extra variable
 
-Check for discovery commands and tools:
+# Set default credentials for proxy if needed
+(New-Object System.Net.WebClient).Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
 
-CopyDeviceProcessEvents
-| where FileName in~ ("nmap.exe", "psexec.exe", "mimikatz.exe", "powersploit.ps1", "bloodhound.exe")
-    or ProcessCommandLine contains "net use" 
-    or ProcessCommandLine contains "net view"
+$baseHeaders = @{
+    'hibp-api-key' = 'APIKEY'  # Fixed header name
+    'Accept' = 'application/json'
+    'user-agent' = 'powershell'  # Kept simple user-agent
+}
 
-Monitor for unusual PowerShell activity:
+$emailToSearch = Read-Host "Email Address to Search"
+$webRequest = $environmentURL + $service + $emailToSearch
 
-CopyDeviceProcessEvents
-| where FileName =~ "powershell.exe"
-| where ProcessCommandLine contains "download" 
-    or ProcessCommandLine contains "IEX" 
-    or ProcessCommandLine contains "invoke-expression"
-
-
-DeviceNetworkEvents
-| where RemoteIP == "10.112.200.15" or LocalIP == "10.112.200.15"
-| project Timestamp, DeviceName, LocalIP, LocalPort, RemoteIP, RemotePort, ActionType, InitiatingProcessFileName
-| order by Timestamp desc
-For more context, you can expand this to show:
-
-DeviceNetworkEvents
-| where RemoteIP == "10.112.200.15" or LocalIP == "10.112.200.15"
-| join DeviceProcessEvents on ProcessId
-| project 
-    Timestamp,
-    DeviceName,
-    LocalIP,
-    RemoteIP,
-    RemotePort,
-    ProcessCommandLine,
-    InitiatingProcessFileName,
-    ActionType
+try {
+    $result = Invoke-RestMethod -Uri $webRequest -Method Get -Headers $baseHeaders
+    $result | Format-Table -AutoSize
+}
+catch {
+    if ($_.Exception.Response.StatusCode.value__ -eq 404) {
+        Write-Host "No breaches found for this email address."
+    }
+    else {
+        Write-Host "Error: $($_.Exception.Message)"
+    }
+}
