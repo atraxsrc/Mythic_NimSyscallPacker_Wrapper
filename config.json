@@ -6,26 +6,31 @@
 	"exclude_agent_icons": false
 }
 
-# Simple HIBP checker
-$apiKey = "APIKEY"  # Replace with your actual API key
-$email = Read-Host "Enter email to check"
+$apiKey = "APIKEY" 
 
-$headers = @{
-    'hibp-api-key' = $apiKey
-    'user-agent' = 'powershell'
-}
+do {
+    $email = Read-Host "Enter email to check"
 
-$url = "https://haveibeenpwned.com/api/v3/breachedaccount/$email"
+    $headers = @{
+        'hibp-api-key' = $apiKey
+        'user-agent' = 'powershell'
+    }
 
-Write-Host "Checking $email..."
+    $url = "https://haveibeenpwned.com/api/v3/breachedaccount/$email"
 
-try {
-    $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Get
-    Write-Host "Found in these breaches:"
-    $response | ForEach-Object { Write-Host "- $($_.Name)" }
-}
-catch {
-    Write-Host "Error checking email: $($_.Exception.Message)"
-}
+    Write-Host "Checking $email..."
 
+    try {
+        $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Get
+        Write-Host "Found in these breaches:"
+        $response | ForEach-Object { Write-Host "- $($_.Name)" }
+    }
+    catch {
+        Write-Host "Error checking email: $($_.Exception.Message)"
+    }
+
+    $continue = Read-Host "Would you like to search another email? (yes/no)"
+} while ($continue.ToLower() -eq "yes" -or $continue.ToLower() -eq "y")
+
+Write-Host "Thank you for using the HIBP checker!"
 pause
