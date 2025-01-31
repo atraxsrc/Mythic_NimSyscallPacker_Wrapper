@@ -26,3 +26,23 @@ CopyDeviceProcessEvents
 | where ProcessCommandLine contains "download" 
     or ProcessCommandLine contains "IEX" 
     or ProcessCommandLine contains "invoke-expression"
+
+
+DeviceNetworkEvents
+| where RemoteIP == "10.112.200.15" or LocalIP == "10.112.200.15"
+| project Timestamp, DeviceName, LocalIP, LocalPort, RemoteIP, RemotePort, ActionType, InitiatingProcessFileName
+| order by Timestamp desc
+For more context, you can expand this to show:
+
+DeviceNetworkEvents
+| where RemoteIP == "10.112.200.15" or LocalIP == "10.112.200.15"
+| join DeviceProcessEvents on ProcessId
+| project 
+    Timestamp,
+    DeviceName,
+    LocalIP,
+    RemoteIP,
+    RemotePort,
+    ProcessCommandLine,
+    InitiatingProcessFileName,
+    ActionType
