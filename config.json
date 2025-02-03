@@ -6,9 +6,3 @@
 	"exclude_agent_icons": false
 }
 
-Get-ADUser -Identity "1111" -Properties LastLogon,LastLogonDate,LastLogonTimestamp,whenCreated | 
-Select-Object SamAccountName,Name,
-    @{Name='LastLogon';Expression={[DateTime]::FromFileTime($_.LastLogon)}},
-    LastLogonDate,
-    @{Name='LastLogonTimestamp';Expression={[DateTime]::FromFileTime($_.LastLogonTimestamp)}},
-    whenCreated
