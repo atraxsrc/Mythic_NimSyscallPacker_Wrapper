@@ -6,8 +6,10 @@
 	"exclude_agent_icons": false
 }
 
-# Enhanced HIBP checker with multiple services
 $apiKey = "APIKEY"  # Replace with your actual API key
+
+# Proxy settings
+[System.Net.WebRequest]::DefaultWebProxy.Credentials = [System.Net.CredentialCache]::DefaultCredentials
 
 do {
     Write-Host "`nSelect service to check:"
@@ -34,7 +36,7 @@ do {
     }
 
     try {
-        $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Get
+        $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Get -Proxy ([System.Net.WebRequest]::GetSystemWebProxy()).GetProxy($url) -ProxyUseDefaultCredentials
         if ($serviceChoice -eq "1") {
             Write-Host "Found in these breaches:"
             $response | ForEach-Object { Write-Host "- $($_.Name)" }
