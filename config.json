@@ -6,3 +6,12 @@
 	"exclude_agent_icons": false
 }
 
+event_platform=Win OR event_platform=Mac OR event_platform=Lin AND
+(
+  CommsIP IN ("suspicious_ip1", "suspicious_ip2") OR 
+  UserName IN ("suspicious_username1", "suspicious_username2") OR
+  RemoteAddressIP IN ("suspicious_ip3") OR
+  HttpRequestURL IN ("suspicious_url1", "suspicious_url2") OR
+  MD5HashData IN ("suspicious_md5_1", "suspicious_md5_2") OR
+  SHA256HashData IN ("suspicious_sha256_1", "suspicious_sha256_2")
+)
