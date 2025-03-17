@@ -82,3 +82,71 @@ Start-Sleep -Milliseconds 1500  # Respect rate limits
 Write-Host "`nChecking Breached Accounts..."
 Get-BreachedAccounts -Url $BreachedAccountUrl -Headers $Headers
 Start-Sleep -Milliseconds 1500  # Respect rate limits
+
+
+
+---
+
+
+# Define your HIBP API key and email to check
+$ApiKey = "your-hibp-api-key-here"  # Replace with your API key
+$Email = "example@domain.com"       # Replace with the email to check
+
+# Define the API endpoint for stealer logs
+$StealerLogsUrl = "https://haveibeenpwned.com/api/v3/stealerlogsbyemail/$Email"
+
+# Headers for the API request
+$Headers = @{
+    "hibp-api-key" = $ApiKey
+    "User-Agent"   = "PowerShell-HIBP-Query"
+}
+
+# Proxy Configuration
+# Option 1: Use default credentials (if proxy accepts your logged-in Windows credentials)
+$Proxy = [System.Net.WebRequest]::GetSystemWebProxy()
+$Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
+
+# Option 2: Manually specify proxy and credentials (uncomment and configure if needed)
+# $ProxyAddress = "http://your-proxy-address:port"  # Replace with your proxy URL
+# $Proxy = New-Object System.Net.WebProxy($ProxyAddress, $true)
+# $ProxyCredentials = Get-Credential  # Prompts for username/password
+# $Proxy.Credentials = $ProxyCredentials
+
+# Create WebClient for the request with proxy settings
+$WebClient = New-Object System.Net.WebClient
+$WebClient.Proxy = $Proxy
+
+try {
+    # Make the API request using Invoke-RestMethod with proxy settings
+    $Response = Invoke-RestMethod -Uri $StealerLogsUrl -Method Get -Headers $Headers -ErrorAction Stop -Proxy $Proxy.Address -ProxyCredential $Proxy.Credentials
+
+    # Check if there are results
+    if ($Response) {
+        Write-Host "Stealer Logs Found for $Email!" -ForegroundColor Yellow
+        Write-Host "Details:"
+        $Response | ForEach-Object {
+            Write-Host "- Website: $($_.Website)"
+            Write-Host "  Date Captured: $($_.DateCaptured)"
+            Write-Host "  Source: $($_.Source)"
+        }
+    } else {
+        Write-Host "No stealer logs found for $Email." -ForegroundColor Green
+    }
+}
+catch {
+    $StatusCode = $_.Exception.Response.StatusCode
+    if ($StatusCode -eq 403) {
+        Write-Host "Error: Access denied. Check if you have a Pwned 5 subscription and a valid API key." -ForegroundColor Red
+    } elseif ($StatusCode -eq 404) {
+        Write-Host "No stealer logs found for $Email." -ForegroundColor Green
+    } elseif ($StatusCode -eq 429) {
+        Write-Host "Error: Rate limit exceeded. Wait before retrying." -ForegroundColor Red
+    } elseif ($StatusCode -eq 407) {
+        Write-Host "Error: Proxy authentication required. Ensure proxy credentials are correctly configured." -ForegroundColor Red
+    } else {
+        Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+# Respect rate limits (1500ms delay for free keys, adjust as needed for paid subscriptions)
+Start-Sleep -Milliseconds 1500
