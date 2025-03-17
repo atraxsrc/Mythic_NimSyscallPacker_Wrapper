@@ -7,3 +7,78 @@
 }
 
 
+# Define your HIBP API key and email to check
+$ApiKey = "your-hibp-api-key-here"  # Replace with your API key
+$Email = "example@domain.com"       # Replace with the email to check
+
+# Define the API endpoints
+$StealerLogsUrl = "https://haveibeenpwned.com/api/v3/stealerlogsbyemail/$Email"
+$BreachedAccountUrl = "https://haveibeenpwned.com/api/v3/breachedaccount/$Email`?truncateResponse=false"
+
+# Headers for the API request
+$Headers = @{
+    "hibp-api-key" = $ApiKey
+    "User-Agent"   = "PowerShell-HIBP-Query"
+}
+
+# Function to query stealer logs
+function Get-StealerLogs {
+    param ($Url, $Headers)
+    try {
+        $Response = Invoke-RestMethod -Uri $Url -Method Get -Headers $Headers -ErrorAction Stop
+        if ($Response) {
+            Write-Host "Stealer Logs Found for $Email!" -ForegroundColor Yellow
+            $Response | ForEach-Object {
+                Write-Host "- Website: $($_.Website)"
+                Write-Host "  Date Captured: $($_.DateCaptured)"
+                Write-Host "  Source: $($_.Source)"
+            }
+        } else {
+            Write-Host "No stealer logs found for $Email." -ForegroundColor Green
+        }
+    } catch {
+        $StatusCode = $_.Exception.Response.StatusCode
+        if ($StatusCode -eq 403) {
+            Write-Host "Error: Access denied to stealer logs. Check Pwned 5 subscription." -ForegroundColor Red
+        } elseif ($StatusCode -eq 404) {
+            Write-Host "No stealer logs found for $Email." -ForegroundColor Green
+        } else {
+            Write-Host "Error querying stealer logs: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+}
+
+# Function to query breached accounts
+function Get-BreachedAccounts {
+    param ($Url, $Headers)
+    try {
+        $Response = Invoke-RestMethod -Uri $Url -Method Get -Headers $Headers -ErrorAction Stop
+        if ($Response) {
+            Write-Host "Breached Accounts Found for $Email!" -ForegroundColor Yellow
+            $Response | ForEach-Object {
+                Write-Host "- Breach: $($_.Name)"
+                Write-Host "  Date: $($_.BreachDate)"
+                Write-Host "  IsStealerLog: $($_.IsStealerLog)"
+                Write-Host "  Data Classes: $($_.DataClasses -join ', ')"
+            }
+        } else {
+            Write-Host "No breached accounts found for $Email." -ForegroundColor Green
+        }
+    } catch {
+        $StatusCode = $_.Exception.Response.StatusCode
+        if ($StatusCode -eq 404) {
+            Write-Host "No breached accounts found for $Email." -ForegroundColor Green
+        } else {
+            Write-Host "Error querying breached accounts: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+}
+
+# Execute the queries
+Write-Host "Checking Stealer Logs..."
+Get-StealerLogs -Url $StealerLogsUrl -Headers $Headers
+Start-Sleep -Milliseconds 1500  # Respect rate limits
+
+Write-Host "`nChecking Breached Accounts..."
+Get-BreachedAccounts -Url $BreachedAccountUrl -Headers $Headers
+Start-Sleep -Milliseconds 1500  # Respect rate limits
